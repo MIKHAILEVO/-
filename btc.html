@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>BTC Аналитик</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0a0a0a;
+    --bg2: #111111;
+    --bg3: #1a1a1a;
+    --border: #222222;
+    --text: #ffffff;
+    --muted: #555555;
+    --dim: #333333;
+    --orange: #f97316;
+    --green: #10b981;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --blue: #3b82f6;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .logo {
+    width: 36px; height: 36px;
+    background: var(--orange);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 18px;
+  }
+  .header-title { font-weight: 700; font-size: 14px; }
+  .header-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
+  .btn-refresh {
+    padding: 8px 16px;
+    border: 1.5px solid rgba(249,115,22,0.5);
+    background: transparent;
+    color: var(--orange);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-appearance: none;
+  }
+  .btn-refresh:active { transform: scale(0.95); background: rgba(249,115,22,0.1); }
+  .btn-refresh.loading { color: #444; border-color: #333; }
+
+  /* CONTENT */
+  .content { padding: 16px; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+
+  /* CARD */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .card-label {
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 10px;
+  }
+
+  /* PRICE CARD */
+  .price-row { display: flex; align-items: flex-end; justify-content: space-between; }
+  .price-value { font-size: 36px; font-weight: 900; line-height: 1; }
+  .price-change { font-size: 22px; font-weight: 700; }
+  .price-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid;
+    font-size: 11px;
+    font-family: inherit;
+  }
+  .badge-gray { background: rgba(80,80,80,0.2); color: #888; border-color: rgba(80,80,80,0.3); }
+  .badge-green { background: rgba(16,185,129,0.15); color: var(--green); border-color: rgba(16,185,129,0.3); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); border-color: rgba(239,68,68,0.3); }
+  .badge-yellow { background: rgba(234,179,8,0.15); color: var(--yellow); border-color: rgba(234,179,8,0.3); }
+  .update-time { margin-top: 8px; color: var(--muted); font-size: 11px; }
+
+  /* VERDICT */
+  .verdict-card {
+    border-radius: 16px;
+    padding: 16px;
+    border: 2px solid;
+  }
+  .verdict-card.green { border-color: rgba(16,185,129,0.5); background: rgba(16,185,129,0.05); }
+  .verdict-card.red { border-color: rgba(239,68,68,0.5); background: rgba(239,68,68,0.05); }
+  .verdict-card.yellow { border-color: rgba(234,179,8,0.5); background: rgba(234,179,8,0.05); }
+  .verdict-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 4px; }
+  .verdict-value { font-size: 24px; font-weight: 900; }
+  .verdict-value.green { color: var(--green); }
+  .verdict-value.red { color: var(--red); }
+  .verdict-value.yellow { color: var(--yellow); }
+  .verdict-reason { font-size: 12px; color: #888; margin-top: 6px; line-height: 1.5; }
+  .verdict-warn { font-size: 11px; color: var(--muted); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+  /* RSI BAR */
+  .rsi-label-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+  .rsi-bar-bg { height: 8px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+  .rsi-bar-fill { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+  .rsi-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  /* OSCILLATORS GRID */
+  .osc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .osc-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .osc-block.green { border-color: rgba(16,185,129,0.3); }
+  .osc-block.red { border-color: rgba(239,68,68,0.3); }
+  .osc-block.blue { border-color: rgba(59,130,246,0.3); }
+  .osc-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 4px; }
+  .osc-value { font-size: 18px; font-weight: 700; }
+  .osc-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* MA GRID */
+  .ma-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .ma-block {
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+    border: 1px solid;
+  }
+  .ma-block.above { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.05); }
+  .ma-block.below { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.05); }
+  .ma-block.na { border-color: var(--border); }
+  .ma-lbl { font-size: 11px; color: var(--muted); }
+  .ma-val { font-size: 13px; font-weight: 700; margin: 2px 0; }
+  .ma-dir { font-size: 11px; }
+  .ma-dir.above { color: var(--green); }
+  .ma-dir.below { color: var(--red); }
+
+  /* PIVOTS */
+  .pivot-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 12px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 13px;
+    margin-bottom: 2px;
+  }
+  .pivot-row.near { background: rgba(234,179,8,0.08); border-color: rgba(234,179,8,0.35); }
+  .pivot-row.center { background: var(--bg3); border-color: var(--border); }
+  .pivot-lbl { font-weight: 700; width: 30px; }
+  .pivot-lbl.R { color: var(--red); }
+  .pivot-lbl.S { color: var(--green); }
+  .pivot-lbl.P { color: var(--blue); }
+  .pivot-val { color: var(--text); font-weight: 600; }
+  .pivot-tag { font-size: 11px; min-width: 60px; text-align: right; }
+
+  /* FEAR */
+  .fear-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .fear-num { font-size: 32px; font-weight: 900; }
+  .fear-bar-bg { height: 12px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+  .fear-bar-fill { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+  .fear-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* NEWS */
+  .news-item {
+    display: flex; gap: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .news-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .news-num { color: var(--muted); font-size: 11px; min-width: 16px; padding-top: 2px; }
+
+  /* EMPTY / LOADING */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 60vh; gap: 16px; color: var(--muted);
+  }
+  .empty-icon { font-size: 56px; }
+  .empty-text { font-size: 14px; text-align: center; line-height: 1.6; }
+  .btn-load {
+    padding: 14px 32px;
+    border: 1.5px solid rgba(249,115,22,0.5);
+    background: transparent;
+    color: var(--orange);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .btn-load:active { background: rgba(249,115,22,0.1); }
+
+  .spin { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 12px;
+    padding: 14px;
+    color: var(--red);
+    font-size: 13px;
+    margin: 12px 16px;
+  }
+
+  .footer-note {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .footer-note-title { color: #777; font-weight: 700; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">₿</div>
+    <div>
+      <div class="header-title">BTC АНАЛИТИК</div>
+      <div class="header-sub">Binance API · Реальные данные</div>
+    </div>
+  </div>
+  <button class="btn-refresh" id="btnRefresh" onclick="loadData()">⟳ ОБНОВИТЬ</button>
+</div>
+
+<div id="errorBox" class="error-box" style="display:none"></div>
+
+<div id="emptyState" class="content">
+  <div class="empty-state">
+    <div class="empty-icon">₿</div>
+    <div class="empty-text">Нажми кнопку для загрузки<br>актуальных данных BTC</div>
+    <button class="btn-load" onclick="loadData()">⟳ ЗАГРУЗИТЬ ДАННЫЕ</button>
+  </div>
+</div>
+
+<div id="loadingState" class="content" style="display:none">
+  <div class="empty-state">
+    <div class="empty-icon spin">⟳</div>
+    <div class="empty-text">Загрузка данных...<br><span style="color:#333;font-size:12px">RSI · MACD · Пивоты · Страх/Жадность</span></div>
+  </div>
+</div>
+
+<div id="dataContent" class="content" style="display:none"></div>
+
+<script>
+// ── UTILS ────────────────────────────────────────────────
+function fmt(n) { return n != null ? '$' + Number(n).toLocaleString('ru-RU') : '—'; }
+function fmtK(n) { return n != null ? '$' + (n/1000).toFixed(1) + 'K' : '—'; }
+
+function calcSMA(arr, p) {
+  if (arr.length < p) return null;
+  return arr.slice(-p).reduce((a,b)=>a+b,0)/p;
+}
+function calcEMA(arr, p) {
+  const k = 2/(p+1); let e = arr[0];
+  for (let i=1;i<arr.length;i++) e = arr[i]*k + e*(1-k);
+  return e;
+}
+function calcRSI(closes, p=14) {
+  if (closes.length < p+1) return null;
+  let g=0,l=0;
+  for (let i=closes.length-p;i<closes.length;i++) {
+    const d = closes[i]-closes[i-1];
+    if(d>0) g+=d; else l+=Math.abs(d);
+  }
+  const ag=g/p, al=l/p;
+  if(al===0) return 100;
+  return Math.round(100 - 100/(1+ag/al));
+}
+function calcMACD(closes) {
+  if(closes.length<26) return null;
+  const e12 = calcEMA(closes.slice(-12),12);
+  const e26 = calcEMA(closes.slice(-26),26);
+  return e12 - e26;
+}
+function calcStoch(highs,lows,closes,p=14) {
+  if(closes.length<p) return null;
+  const hh=Math.max(...highs.slice(-p)), ll=Math.min(...lows.slice(-p));
+  if(hh===ll) return 50;
+  return Math.round((closes[closes.length-1]-ll)/(hh-ll)*100);
+}
+function calcPivots(h,l,c) {
+  const p=(h+l+c)/3;
+  return { P:p, R1:2*p-l, R2:p+(h-l), R3:h+2*(p-l), S1:2*p-h, S2:p-(h-l), S3:l-2*(h-p) };
+}
+function verdictLogic(rsi,stoch,macd,price,ma50,ma200,trend) {
+  if(rsi<30 && stoch<20) return {v:'ВОЗМОЖЕН ЛОНГ', r:'RSI и Stochastic в зоне перепроданности', c:'green'};
+  if(rsi>70 && stoch>80) return {v:'ОСТОРОЖНО — ПЕРЕКУПЛЕН', r:'RSI и Stochastic сигнализируют перегрев', c:'red'};
+  if(trend==='медвежий' && price<ma50) return {v:'ВОЗДЕРЖАТЬСЯ', r:'Медвежий тренд: цена ниже MA50', c:'yellow'};
+  if(trend==='бычий' && macd>0) return {v:'НЕЙТРАЛЬНО-БЫЧИЙ', r:'Тренд бычий, MACD положительный', c:'green'};
+  return {v:'ВОЗДЕРЖАТЬСЯ', r:'Нейтральные сигналы — ждём подтверждения', c:'yellow'};
+}
+
+// ── FETCH ────────────────────────────────────────────────
+async function loadData() {
+  const btn = document.getElementById('btnRefresh');
+  btn.textContent = '⟳ ЗАГРУЗКА...'; btn.classList.add('loading'); btn.disabled = true;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('loadingState').style.display = '';
+  document.getElementById('dataContent').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+
+  try {
+    // Binance: klines 1d, 200 candles для MA200
+    const [klinesRes, priceRes, fearRes] = await Promise.all([
+      fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=200'),
+      fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
+      fetch('https://api.alternative.me/fng/?limit=1')
+    ]);
+
+    if(!klinesRes.ok || !priceRes.ok) throw new Error('Binance API недоступен. Проверь интернет.');
+
+    const klines = await klinesRes.json();
+    const ticker = await priceRes.json();
+    const fearData = await fearRes.json().catch(()=>null);
+
+    // Parse klines: [time, open, high, low, close, volume, ...]
+    const closes = klines.map(k=>parseFloat(k[4]));
+    const highs  = klines.map(k=>parseFloat(k[2]));
+    const lows   = klines.map(k=>parseFloat(k[3]));
+    const prev   = klines[klines.length-2];
+
+    const price    = parseFloat(ticker.lastPrice);
+    const change24 = parseFloat(ticker.priceChangePercent);
+    const vol24    = parseFloat(ticker.quoteVolume);
+
+    const rsi   = calcRSI(closes);
+    const macd  = calcMACD(closes);
+    const stoch = calcStoch(highs, lows, closes);
+    const ma50  = calcSMA(closes, 50);
+    const ma100 = calcSMA(closes, 100);
+    const ma200 = calcSMA(closes, 200);
+    const pivots = calcPivots(parseFloat(prev[2]), parseFloat(prev[3]), parseFloat(prev[4]));
+
+    let trend = 'боковик';
+    if(ma50&&ma200) {
+      if(price>ma50&&price>ma200&&ma50>ma200) trend='бычий';
+      else if(price<ma50&&price<ma200) trend='медвежий';
+    }
+
+    const verdict = verdictLogic(rsi,stoch,macd,price,ma50,ma200,trend);
+    const fear = fearData?.data?.[0];
+
+    renderData({price,change24,vol24,rsi,macd,stoch,ma50,ma100,ma200,pivots,trend,verdict,fear});
+
+  } catch(e) {
+    showError(e.message || 'Ошибка загрузки');
+  } finally {
+    btn.textContent = '⟳ ОБНОВИТЬ'; btn.classList.remove('loading'); btn.disabled = false;
+    document.getElementById('loadingState').style.display = 'none';
+  }
+}
+
+function showError(msg) {
+  document.getElementById('errorBox').textContent = '⚠️ ' + msg;
+  document.getElementById('errorBox').style.display = 'block';
+  document.getElementById('emptyState').style.display = '';
+  document.getElementById('loadingState').style.display = 'none';
+}
+
+// ── RENDER ───────────────────────────────────────────────
+function renderData(d) {
+  const el = document.getElementById('dataContent');
+  const now = new Date().toLocaleTimeString('ru-RU');
+  const trendColor = d.trend==='бычий'?'green':d.trend==='медвежий'?'red':'yellow';
+  const fearVal = d.fear ? parseInt(d.fear.value) : null;
+  const fearLabel = d.fear?.value_classification || '';
+  const fearColor = fearVal>60?'green':fearVal<30?'red':'yellow';
+  const fearFill = fearVal!=null ? fearVal+'%' : '0%';
+  const fearFillColor = fearColor==='green'?'var(--green)':fearColor==='red'?'var(--red)':'var(--yellow)';
+
+  const macdSignal = d.macd!=null ? (d.macd>0?'бычий':'медвежий') : '—';
+  const macdColor = d.macd!=null ? (d.macd>0?'green':'red') : 'gray';
+  const stochSub = d.stoch>80?'Перекуплен':d.stoch<20?'Перепродан':'Нейтральный';
+  const stochColor = d.stoch>80?'red':d.stoch<20?'green':'blue';
+
+  function maBlock(lbl, val) {
+    const above = val && d.price > val;
+    const cls = val ? (above?'above':'below') : 'na';
+    const dir = val ? (above?'▲ выше':'▼ ниже') : '';
+    const dirCls = val ? (above?'above':'below') : '';
+    return `<div class="ma-block ${cls}">
+      <div class="ma-lbl">${lbl}</div>
+      <div class="ma-val">${val ? fmtK(val) : '—'}</div>
+      <div class="ma-dir ${dirCls}">${dir}</div>
+    </div>`;
+  }
+
+  function pivotRow(lbl, val, type) {
+    const near = val && Math.abs((val - d.price)/d.price) < 0.015;
+    const above = val && d.price > val;
+    const cls = near?'near':(type==='P'?'center':'');
+    const tag = near ? `<span class="pivot-tag" style="color:var(--yellow)">◀ РЯДОМ</span>`
+      : val ? `<span class="pivot-tag" style="color:#444">${above?'выше':'ниже'}</span>` : '<span class="pivot-tag"></span>';
+    return `<div class="pivot-row ${cls}">
+      <span class="pivot-lbl ${type}">${lbl}</span>
+      <span class="pivot-val">${val ? '$'+Math.round(val).toLocaleString('ru-RU') : '—'}</span>
+      ${tag}
+    </div>`;
+  }
+
+  // RSI bar
+  const rsiColor = d.rsi>70?'var(--red)':d.rsi<30?'var(--green)':'var(--blue)';
+  const rsiLabel = d.rsi>70?'ПЕРЕКУПЛЕН':d.rsi<30?'ПЕРЕПРОДАН':'НЕЙТРАЛЬНЫЙ';
+  const rsiLabelColor = d.rsi>70?'var(--red)':d.rsi<30?'var(--green)':'var(--blue)';
+
+  el.innerHTML = `
+    <!-- PRICE -->
+    <div class="card">
+      <div class="card-label">BTC / USD</div>
+      <div class="price-row">
+        <div class="price-value">${fmt(d.price)}</div>
+        <div class="price-change" style="color:${d.change24>=0?'var(--green)':'var(--red)'}">
+          ${d.change24>=0?'▲':'▼'} ${Math.abs(d.change24).toFixed(2)}%
+        </div>
+      </div>
+      <div class="price-meta">
+        <span class="badge badge-gray"><span style="opacity:.6">VOL</span> $${(d.vol24/1e9).toFixed(1)}B</span>
+        <span class="badge badge-${trendColor}"><span style="opacity:.6">ТРЕНД</span> ${d.trend.toUpperCase()}</span>
+      </div>
+      <div class="update-time">Обновлено: ${now}</div>
+    </div>
+
+    <!-- VERDICT -->
+    <div class="verdict-card ${d.verdict.c}">
+      <div class="verdict-title">Автовердикт</div>
+      <div class="verdict-value ${d.verdict.c}">${d.verdict.v}</div>
+      <div class="verdict-reason">${d.verdict.r}</div>
+      <div class="verdict-warn">⚠️ Только теханализ. Для финала — скрин графика + параметры сделки.</div>
+    </div>
+
+    <!-- OSCILLATORS -->
+    <div class="card">
+      <div class="card-label">Осцилляторы</div>
+      <div style="margin-bottom:14px">
+        <div class="rsi-label-row">
+          <span style="color:#777">RSI(14)</span>
+          <span style="color:${rsiLabelColor}">${d.rsi!=null?d.rsi:'—'} · ${rsiLabel}</span>
+        </div>
+        <div class="rsi-bar-bg">
+          <div class="rsi-bar-fill" style="width:${d.rsi||0}%;background:${rsiColor}"></div>
+        </div>
+        <div class="rsi-ticks"><span>0</span><span>30</span><span style="color:rgba(239,68,68,0.5)">70</span><span>100</span></div>
+      </div>
+      <div class="osc-grid">
+        <div class="osc-block ${stochColor}">
+          <div class="osc-title">Stochastic %K</div>
+          <div class="osc-value" style="color:${stochColor==='green'?'var(--green)':stochColor==='red'?'var(--red)':'var(--blue)'}">${d.stoch!=null?d.stoch:'—'}</div>
+          <div class="osc-sub">${stochSub}</div>
+        </div>
+        <div class="osc-block ${macdColor}">
+          <div class="osc-title">MACD</div>
+          <div class="osc-value" style="color:${macdColor==='green'?'var(--green)':'var(--red)'}">${macdSignal}</div>
+          <div class="osc-sub">${d.macd!=null?(d.macd>0?'Импульс вверх':'Импульс вниз'):'—'}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MA -->
+    <div class="card">
+      <div class="card-label">Скользящие средние</div>
+      <div class="ma-grid">
+        ${maBlock('MA50', d.ma50)}
+        ${maBlock('MA100', d.ma100)}
+        ${maBlock('MA200', d.ma200)}
+      </div>
+    </div>
+
+    <!-- PIVOTS -->
+    <div class="card">
+      <div class="card-label">Уровни Пивотов</div>
+      ${pivotRow('R3', d.pivots.R3, 'R')}
+      ${pivotRow('R2', d.pivots.R2, 'R')}
+      ${pivotRow('R1', d.pivots.R1, 'R')}
+      ${pivotRow('P',  d.pivots.P,  'P')}
+      ${pivotRow('S1', d.pivots.S1, 'S')}
+      ${pivotRow('S2', d.pivots.S2, 'S')}
+      ${pivotRow('S3', d.pivots.S3, 'S')}
+    </div>
+
+    <!-- FEAR & GREED -->
+    <div class="card">
+      <div class="card-label">Индекс страха и жадности</div>
+      ${fearVal!=null ? `
+        <div class="fear-row">
+          <span class="fear-num" style="color:${fearFillColor}">${fearVal}</span>
+          <span class="badge badge-${fearColor}">${fearLabel.toUpperCase()}</span>
+        </div>
+        <div class="fear-bar-bg">
+          <div class="fear-bar-fill" style="width:${fearFill};background:${fearFillColor}"></div>
+        </div>
+        <div class="fear-labels"><span>😱 Страх</span><span>😎 Жадность</span></div>
+      ` : '<div style="color:#444;font-size:13px">Нет данных</div>'}
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer-note">
+      <div class="footer-note-title">📋 Для полного разбора добавь:</div>
+      <div>1. Скрин графика TradingView (свечи + паттерны)</div>
+      <div>2. Параметры: вход / стоп-лосс / цель</div>
+      <div>3. Отправь в чат Claude — получишь вердикт</div>
+    </div>
+  `;
+
+  document.getElementById('dataContent').style.display = '';
+}
+</script>
+</body>
+</html>
